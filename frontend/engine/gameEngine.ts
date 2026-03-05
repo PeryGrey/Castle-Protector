@@ -100,7 +100,7 @@ interface GameEngineParams {
   onStateChange: (state: GameState) => void
 }
 
-interface GameEngine {
+export interface GameEngine {
   start: () => void
   stop: () => void
   getState: () => GameState
@@ -204,7 +204,15 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
       case 'build_complete': {
         const wallId = p['wallId'] as WallId
         const slot = p['slot'] as 0 | 1
-        state.walls[wallId].weapons[slot] = makeWeapon(wallId, slot)
+        const weaponId = p['weaponId'] as string
+        state.walls[wallId].weapons[slot] = {
+          id: weaponId,
+          wallId,
+          slot,
+          durability: GAME_CONFIG.weapons.startingDurability,
+          ammoLoaded: null,
+          exists: true,
+        }
         break
       }
 
@@ -341,23 +349,22 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
       if (action.completesAt <= now) {
         if (action.type === 'build' || action.type === 'emergencyRebuild') {
           if (action.slot !== undefined) {
-            state.walls[action.wallId].weapons[action.slot] = makeWeapon(action.wallId, action.slot)
+            // Generate stable ID here so all clients use the same one from the event
+            const weaponId = `${action.wallId}-slot${action.slot}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+            publish('build_complete', { wallId: action.wallId, slot: action.slot, weaponId })
           }
-        } else if (action.type === 'reinforce') {
-          // reinforce immediate via event; nothing extra needed
         }
         return false
       }
       return true
     })
 
-    // Brew completion
+    // Brew completion — clear slot locally to prevent re-firing; increment via handleEvent only
     for (const slot of state.brewSlots) {
       if (slot.completesAt !== null && slot.ammoType !== null && slot.completesAt <= now) {
         const ammoType = slot.ammoType
         slot.ammoType = null
         slot.completesAt = null
-        state.ammoInventory[ammoType]++
         publish('brew_complete', { slotIndex: slot.slotIndex, ammoType })
       }
     }
@@ -460,9 +467,10 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
         }
       }
 
-      // Wave completion check
+      // Wave completion check — set phase locally to prevent re-firing before event returns
       const aliveEnemies = state.enemies.filter((e) => e.alive)
-      if (state.enemies.length > 0 && aliveEnemies.length === 0) {
+      if (state.phase === 'wave_active' && state.enemies.length > 0 && aliveEnemies.length === 0) {
+        state.phase = 'between_waves'
         publish('wave_end', { wave: state.currentWave, score: state.score })
       }
     }

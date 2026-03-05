@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/_shadcn/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/_shadcn/lib/utils";
 
 type Role = "builder" | "artillery" | "alchemist";
 type Mode = "home" | "create" | "join";
