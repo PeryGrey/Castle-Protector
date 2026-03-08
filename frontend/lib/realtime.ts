@@ -69,33 +69,9 @@ export async function publishEvent(
 export async function fetchRoomEvents(roomCode: string): Promise<GameEvent[]> {
   const { data, error } = await supabase
     .from('game_events')
-    .select('id, type, payload, created_at')
+    .select('id, room_code, type, payload, created_at')
     .eq('room_code', roomCode)
     .order('created_at', { ascending: true })
   if (error) throw error
   return data ?? []
-}
-
-/** Subscribe to game_sessions updates for a room. Returns unsubscribe fn. */
-export function subscribeToSession(
-  roomCode: string,
-  onUpdate: (session: GameSession) => void
-): () => void {
-  const channel: RealtimeChannel = supabase
-    .channel(`session:${roomCode}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'game_sessions',
-        filter: `room_code=eq.${roomCode}`,
-      },
-      (payload) => onUpdate(payload.new as GameSession)
-    )
-    .subscribe()
-
-  return () => {
-    supabase.removeChannel(channel)
-  }
 }

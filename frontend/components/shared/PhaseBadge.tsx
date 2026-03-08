@@ -1,28 +1,34 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { Badge } from '@/_shadcn/components/ui/badge'
+"use client";
+import { Badge } from "@/_shadcn/components/ui/badge";
+import { useCountdown } from "@/components/shared/useCountdown";
+import type { GamePhase } from "@/engine/types";
 
 interface PhaseBadgeProps {
-  phase: string
-  nextWaveAt: number | null
+  phase: GamePhase;
+  nextWaveAt: number | null;
 }
 
 export function PhaseBadge({ phase, nextWaveAt }: PhaseBadgeProps) {
-  const [secs, setSecs] = useState(() =>
-    nextWaveAt && phase === 'between_waves'
-      ? Math.max(0, Math.ceil((nextWaveAt - Date.now()) / 1000))
-      : 0
-  )
+  const secs = useCountdown(phase === "between_waves" ? nextWaveAt : null);
 
-  useEffect(() => {
-    if (phase !== 'between_waves' || !nextWaveAt) return
-    const update = () => setSecs(Math.max(0, Math.ceil((nextWaveAt - Date.now()) / 1000)))
-    update()
-    const id = setInterval(update, 500)
-    return () => clearInterval(id)
-  }, [phase, nextWaveAt])
-
-  if (phase === 'wave_active') return <Badge variant="default">Wave Active</Badge>
-  if (phase === 'between_waves') return <Badge variant="secondary">Breather — {secs}s</Badge>
-  return <Badge variant="destructive">Game Over</Badge>
+  if (phase === "wave_active")
+    return (
+      <Badge
+        variant="default"
+        className="uppercase font-semibold text-black/60"
+      >
+        Wave Active
+      </Badge>
+    );
+  if (phase === "between_waves")
+    return (
+      <Badge variant="secondary" className="uppercase font-semibold">
+        Breather — {secs}s
+      </Badge>
+    );
+  return (
+    <Badge variant="destructive" className="uppercase font-semibold">
+      Game Over
+    </Badge>
+  );
 }

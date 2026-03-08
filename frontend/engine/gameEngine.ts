@@ -1,3 +1,4 @@
+import { parseISO } from 'date-fns'
 import { GAME_CONFIG } from '../config/gameConfig'
 import type { GameEventType } from '../lib/realtime'
 import { fetchRoomEvents, subscribeToRoom } from '../lib/realtime'
@@ -15,10 +16,9 @@ import type {
   Personnel,
   Role,
 } from './types'
+import { LANE_IDS } from './types'
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-
-const LANE_IDS: LaneId[] = ['moat_left', 'bridge_left', 'bridge_right', 'moat_right']
 
 function makeLane(id: LaneId): Lane {
   return {
@@ -29,22 +29,26 @@ function makeLane(id: LaneId): Lane {
   }
 }
 
-function initialState(roomCode: string, role: Role): GameState {
-  const lanes = Object.fromEntries(
-    LANE_IDS.map((id) => [id, makeLane(id)])
-  ) as Record<LaneId, Lane>
-
-  const personnel: [Personnel, Personnel, Personnel] = [
+function makeInitialPersonnel(): [Personnel, Personnel, Personnel] {
+  return [
     { id: 0, weaponId: null, mode: 'idle' },
     { id: 1, weaponId: null, mode: 'idle' },
     { id: 2, weaponId: null, mode: 'idle' },
   ]
+}
 
-  const brewSlots: [BrewSlot, BrewSlot, BrewSlot] = [
+function makeInitialBrewSlots(): [BrewSlot, BrewSlot, BrewSlot] {
+  return [
     { slotIndex: 0, ammoType: null, completesAt: null },
     { slotIndex: 1, ammoType: null, completesAt: null },
     { slotIndex: 2, ammoType: null, completesAt: null },
   ]
+}
+
+function initialState(roomCode: string, role: Role): GameState {
+  const lanes = Object.fromEntries(
+    LANE_IDS.map((id) => [id, makeLane(id)])
+  ) as Record<LaneId, Lane>
 
   return {
     roomCode,
@@ -58,9 +62,9 @@ function initialState(roomCode: string, role: Role): GameState {
     enemies: [],
     enemiesDefeated: 0,
     totalEnemiesDefeated: 0,
-    personnel,
+    personnel: makeInitialPersonnel(),
     ammoInventory: { cannonballs: 0, arrows: 0, bolts: 0 },
-    brewSlots,
+    brewSlots: makeInitialBrewSlots(),
     builderActions: [],
     score: 0,
     wavesCompleted: 0,
@@ -132,19 +136,20 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
         state.waveStartedAt = Date.now()
         state.nextWaveAt = null
         state.enemiesDefeated = 0
-        if (isBuilder) {
+        if (isBuilder && !replaying) {
           // Builder generates and publishes spawns; non-builders wait for enemy_spawn
+          // During replay, enemies are restored from the enemy_spawn event instead
           const enemies = generateWaveEnemies(wave)
           state.enemies = enemies
-          if (!replaying) {
-            publish('enemy_spawn', { enemies: enemies as unknown as Record<string, unknown>[] })
-          }
+          publish('enemy_spawn', { enemies: enemies as unknown as Record<string, unknown>[] })
         }
         break
       }
 
       case 'enemy_spawn': {
-        if (!isBuilder) {
+        // Non-builders always load from the event; builder only loads during replay
+        // (in live play the builder already set enemies locally in wave_start)
+        if (!isBuilder || replaying) {
           state.enemies = (p['enemies'] as Enemy[]) ?? []
         }
         break
@@ -183,7 +188,7 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
 
       case 'build_start': {
         const laneId = p['laneId'] as LaneId
-        const slot = p['slot'] as 0 | 1
+        const slot = p['slot'] as 0
         const completesAt = p['completesAt'] as number
         const actionType = p['actionType'] as BuilderAction['type']
         const cost = GAME_CONFIG.builder.costs[actionType] ?? GAME_CONFIG.builder.costs.build
@@ -194,7 +199,7 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
 
       case 'build_complete': {
         const laneId = p['laneId'] as LaneId
-        const slot = p['slot'] as 0 | 1
+        const slot = p['slot'] as 0
         const weaponId = p['weaponId'] as string
         state.lanes[laneId].weapons[slot] = {
           id: weaponId,
@@ -278,17 +283,9 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
         // Reset all operational state — persists: lane HP, weapons, score, radar
         state.resources = GAME_CONFIG.builder.startingResources
         state.ammoInventory = { cannonballs: 0, arrows: 0, bolts: 0 }
-        state.brewSlots = [
-          { slotIndex: 0, ammoType: null, completesAt: null },
-          { slotIndex: 1, ammoType: null, completesAt: null },
-          { slotIndex: 2, ammoType: null, completesAt: null },
-        ]
+        state.brewSlots = makeInitialBrewSlots()
         state.builderActions = []
-        state.personnel = [
-          { id: 0, weaponId: null, mode: 'idle' },
-          { id: 1, weaponId: null, mode: 'idle' },
-          { id: 2, weaponId: null, mode: 'idle' },
-        ]
+        state.personnel = makeInitialPersonnel()
         for (const lane of Object.values(state.lanes)) {
           for (const weapon of lane.weapons) {
             if (weapon) weapon.ammoLoaded = null
@@ -357,7 +354,7 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
     // Resource regen
     state.resources = Math.min(
       state.resources + builder.resourceRegenPerSecond,
-      9999
+      GAME_CONFIG.builder.resourceCap
     )
 
     // Enemy position advance
@@ -523,7 +520,7 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
       if (state.resources < cost) return
       publish('reinforce', {
         laneId,
-        amount: GAME_CONFIG.lanes.startingHp * 0.2, // restore 20% max HP
+        amount: GAME_CONFIG.lanes.startingHp * GAME_CONFIG.lanes.reinforceHpFraction,
       })
     },
 
@@ -583,13 +580,13 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
         let lastEventTs: number | null = null
 
         for (const event of sessionEvents) {
-          const eventTs = new Date(event.created_at.replace(' ', 'T') + 'Z').getTime()
+          const eventTs = parseISO(event.created_at).getTime()
           // Apply regen for the time between events (matching what tick() would have done)
           if (lastEventTs !== null && state.phase !== 'game_over') {
             const elapsed = (eventTs - lastEventTs) / 1000
             state.resources = Math.min(
               state.resources + GAME_CONFIG.builder.resourceRegenPerSecond * elapsed,
-              9999
+              GAME_CONFIG.builder.resourceCap
             )
             if (state.phase === 'wave_active') {
               for (const enemy of state.enemies) {
@@ -608,7 +605,7 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
           const elapsed = (Date.now() - lastEventTs) / 1000
           state.resources = Math.min(
             state.resources + GAME_CONFIG.builder.resourceRegenPerSecond * elapsed,
-            9999
+            GAME_CONFIG.builder.resourceCap
           )
           if (state.phase === 'wave_active') {
             for (const enemy of state.enemies) {

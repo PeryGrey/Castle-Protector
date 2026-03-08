@@ -1,38 +1,30 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useParams } from "next/navigation";
 import { useGameEngine } from "@/components/shared/useGameEngine";
 import { BattlefieldView } from "@/components/shared/BattlefieldView";
 import { PhaseBadge } from "@/components/shared/PhaseBadge";
+import { GameLoadingState } from "@/components/shared/GameLoadingState";
+import { GameScreenLayout } from "@/components/shared/GameScreenLayout";
+import { useGameOverRedirect } from "@/components/shared/useGameOverRedirect";
 import { ResourceMeter } from "@/components/builder/ResourceMeter";
 import { CastleMap } from "@/components/builder/CastleMap";
 import { GAME_CONFIG } from "@/config/gameConfig";
+import { ROLE_META } from "@/constants/gameLabels";
 import type { LaneId } from "@/engine/types";
 
 export default function BuilderPage() {
   const { roomCode } = useParams<{ roomCode: string }>();
-  const router = useRouter();
   const { state, actions } = useGameEngine(roomCode, "builder");
   const [selectedLane, setSelectedLane] = useState<LaneId | null>(null);
 
-  useEffect(() => {
-    if (state?.phase === "game_over") {
-      router.push(`/reveal/${roomCode}`);
-    }
-  }, [state?.phase, roomCode, router]);
+  useGameOverRedirect(state?.phase, roomCode);
 
-  if (!state) {
-    return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading game…</p>
-      </main>
-    );
-  }
+  if (!state) return <GameLoadingState />;
 
   return (
-    <main className="h-screen flex overflow-hidden bg-background">
-      {/* ── Left 70%: Battlefield ── */}
-      <div className="flex-[7] min-w-0 overflow-hidden">
+    <GameScreenLayout
+      battlefieldView={
         <BattlefieldView
           lanes={state.lanes}
           enemies={[]}
@@ -42,15 +34,12 @@ export default function BuilderPage() {
           onSelectLane={setSelectedLane}
           builderActions={state.builderActions}
         />
-      </div>
-
-      {/* ── Right 30%: Action Panel ── */}
-      <div className="flex-[3] min-w-0 border-l flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-3 py-2 border-b space-y-2 shrink-0">
+      }
+      header={
+        <>
           <div className="flex items-center justify-between gap-1">
             <span className="font-bold text-sm">
-              🏰 Wave {state.currentWave}
+              {ROLE_META["builder"].emoji} Wave {state.currentWave}
             </span>
             <PhaseBadge phase={state.phase} nextWaveAt={state.nextWaveAt} />
           </div>
@@ -61,26 +50,27 @@ export default function BuilderPage() {
             resources={state.resources}
             regenRate={GAME_CONFIG.builder.resourceRegenPerSecond}
           />
-        </div>
-
-        {/* Content — no scroll */}
-        <div className="flex-1 overflow-hidden p-2 flex flex-col">
-          {selectedLane ? (
-            <CastleMap
-              lane={state.lanes[selectedLane]}
-              laneId={selectedLane}
-              resources={state.resources}
-              builderActions={state.builderActions}
-              onBuild={(laneId, slot) => actions.startBuild(laneId, slot)}
-              onReinforce={(laneId) => actions.reinforce(laneId)}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground text-center pt-8">
+        </>
+      }
+      actions={
+        selectedLane ? (
+          <CastleMap
+            key={selectedLane}
+            lane={state.lanes[selectedLane]}
+            laneId={selectedLane}
+            resources={state.resources}
+            builderActions={state.builderActions}
+            onBuild={(laneId, slot) => actions.startBuild(laneId, slot)}
+            onReinforce={(laneId) => actions.reinforce(laneId)}
+          />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <p className="text-sm font-medium text-center">
               Tap a lane to manage it
             </p>
-          )}
-        </div>
-      </div>
-    </main>
+          </div>
+        )
+      }
+    />
   );
 }

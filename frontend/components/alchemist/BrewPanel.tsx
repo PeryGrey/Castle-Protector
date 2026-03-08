@@ -1,11 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/_shadcn/components/ui/card'
 import { Button } from '@/_shadcn/components/ui/button'
 import { Progress } from '@/_shadcn/components/ui/progress'
 import { Badge } from '@/_shadcn/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/_shadcn/components/ui/select'
 import { GAME_CONFIG } from '@/config/gameConfig'
+import { AMMO_LABELS, AMMO_TYPES } from '@/constants/gameLabels'
+import { SectionLabel } from '@/components/shared/SectionLabel'
+import { useCountdown } from '@/components/shared/useCountdown'
 import type { BrewSlot, AmmoType } from '@/engine/types'
 
 interface BrewPanelProps {
@@ -13,30 +16,15 @@ interface BrewPanelProps {
   onBrew: (slotIndex: 0 | 1 | 2, ammoType: AmmoType) => void
 }
 
-const AMMO_OPTIONS: { value: AmmoType; label: string }[] = [
-  { value: 'cannonballs', label: `Cannonballs (${GAME_CONFIG.alchemist.brewTimePerAmmoType.cannonballs}s)` },
-  { value: 'arrows', label: `Arrows (${GAME_CONFIG.alchemist.brewTimePerAmmoType.arrows}s)` },
-  { value: 'bolts', label: `Bolts (${GAME_CONFIG.alchemist.brewTimePerAmmoType.bolts}s)` },
-]
-
-const AMMO_LABELS: Record<AmmoType, string> = {
-  cannonballs: 'Cannonballs',
-  arrows: 'Arrows',
-  bolts: 'Bolts',
-}
+const AMMO_OPTIONS: { value: AmmoType; label: string }[] = AMMO_TYPES.map((t) => ({
+  value: t,
+  label: `${AMMO_LABELS[t]} (${GAME_CONFIG.alchemist.brewTimePerAmmoType[t]}s)`,
+}))
 
 function ActiveBrewCard({ slot }: { slot: BrewSlot & { completesAt: number; ammoType: AmmoType } }) {
-  const brewTime = GAME_CONFIG.alchemist.brewTimePerAmmoType[slot.ammoType] * 1000
-  const [now, setNow] = useState(() => Date.now())
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 500)
-    return () => clearInterval(id)
-  }, [])
-
-  const elapsed = Math.max(0, now - (slot.completesAt - brewTime))
-  const pct = Math.min(100, (elapsed / brewTime) * 100)
-  const secs = Math.max(0, Math.ceil((slot.completesAt - now) / 1000))
+  const brewTimeSecs = GAME_CONFIG.alchemist.brewTimePerAmmoType[slot.ammoType]
+  const secs = useCountdown(slot.completesAt)
+  const pct = Math.min(100, ((brewTimeSecs - secs) / brewTimeSecs) * 100)
 
   return (
     <Card>
@@ -97,9 +85,7 @@ function IdleBrewCard({
 export function BrewPanel({ brewSlots, onBrew }: BrewPanelProps) {
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
-        Brew Slots
-      </p>
+      <SectionLabel>Brew Slots</SectionLabel>
       {brewSlots.map((slot) =>
         slot.completesAt !== null && slot.ammoType !== null ? (
           <ActiveBrewCard

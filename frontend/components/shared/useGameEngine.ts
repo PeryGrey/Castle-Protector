@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { createGameEngine } from '@/engine/gameEngine'
 import { publishEvent } from '@/lib/realtime'
 import type { GameState, Role, LaneId, AmmoType } from '@/engine/types'
@@ -55,7 +55,7 @@ export function useGameEngine(roomCode: string, role: Role) {
     engineRef.current?.actions.dispatchAmmo(ammoType, weaponId)
   }, [])
 
-  const actions: GameEngine['actions'] = {
+  const actions = useMemo<GameEngine['actions']>(() => ({
     startBuild,
     reinforce,
     assignPersonnel,
@@ -63,7 +63,7 @@ export function useGameEngine(roomCode: string, role: Role) {
     loadAmmo,
     startBrew,
     dispatchAmmo,
-  }
+  }), [startBuild, reinforce, assignPersonnel, unassignPersonnel, loadAmmo, startBrew, dispatchAmmo])
 
   return { state, actions }
 }

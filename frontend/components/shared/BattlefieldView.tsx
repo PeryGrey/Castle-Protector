@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
 import { cn } from "@/_shadcn/lib/utils";
-import { Progress } from "@/_shadcn/components/ui/progress";
 import { Badge } from "@/_shadcn/components/ui/badge";
-import { GAME_CONFIG } from "@/config/gameConfig";
+import { LANE_LABELS } from "@/constants/gameLabels";
+import { BuilderLaneInfo } from "@/components/shared/BuilderLaneInfo";
+import { ArtilleryLaneInfo } from "@/components/shared/ArtilleryLaneInfo";
+import { AlchemistLaneInfo } from "@/components/shared/AlchemistLaneInfo";
 import type {
   Lane,
   LaneId,
@@ -12,174 +13,7 @@ import type {
   Role,
   BuilderAction,
 } from "@/engine/types";
-
-const LANE_IDS: LaneId[] = [
-  "moat_left",
-  "bridge_left",
-  "bridge_right",
-  "moat_right",
-];
-
-const LANE_LABELS: Record<LaneId, string> = {
-  moat_left: "Moat L",
-  bridge_left: "Bridge L",
-  bridge_right: "Bridge R",
-  moat_right: "Moat R",
-};
-
-const LANE_ICONS: Record<LaneId, string> = {
-  moat_left: "🌊",
-  bridge_left: "🌉",
-  bridge_right: "🌉",
-  moat_right: "🌊",
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  sea: "🌊",
-  land: "🏃",
-  air: "🦅",
-};
-
-function hpColorClass(pct: number) {
-  if (pct > 60) return "[&>div]:bg-green-500";
-  if (pct > 30) return "[&>div]:bg-amber-500";
-  return "[&>div]:bg-red-500";
-}
-
-// ── Builder lane info (left info panel) ───────────────────────────────────────
-
-function BuilderLaneInfo({
-  lane,
-  laneId,
-  builderActions,
-}: {
-  lane: Lane;
-  laneId: LaneId;
-  builderActions: BuilderAction[];
-}) {
-  const totalMs = GAME_CONFIG.builder.timers.build * 1000;
-  const [now, setNow] = useState(Date.now);
-
-  const buildAction = builderActions.find(
-    (a) => a.laneId === laneId && a.slot !== undefined,
-  );
-  useEffect(() => {
-    if (!buildAction) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [buildAction]);
-
-  const hpPct = (lane.hp / lane.maxHp) * 100;
-  const critical = hpPct < 30;
-  const weapon = lane.weapons[0];
-  const weaponExists = weapon?.exists;
-
-  const weaponBar = (() => {
-    if (buildAction) {
-      const remaining = Math.max(0, buildAction.completesAt - now);
-      const pct = Math.min(
-        100,
-        Math.max(0, ((totalMs - remaining) / totalMs) * 100),
-      );
-      const secs = Math.ceil(remaining / 1000);
-      return { pct, label: `${secs}s`, className: "[&>div]:bg-violet-500" };
-    }
-    if (!weaponExists) return null;
-    const pct =
-      (weapon.durability / GAME_CONFIG.weapons.startingDurability) * 100;
-    const label = `${Math.ceil(weapon.durability)}`;
-    const className =
-      weapon.durability < 20 ? "[&>div]:bg-red-500" : "[&>div]:bg-sky-500";
-    return { pct, label, className };
-  })();
-
-  return (
-    <div className="w-full space-y-1.5">
-      {/* Wall — label [bar] value */}
-      <div className="flex items-center gap-1.5 text-xs">
-        <span className="text-muted-foreground shrink-0 w-8">Wall</span>
-        <Progress
-          value={hpPct}
-          className={cn("flex-1 h-1.5", hpColorClass(hpPct))}
-        />
-        <span
-          className={cn(
-            "tabular-nums shrink-0 w-7 text-right",
-            critical ? "text-destructive font-bold" : "text-muted-foreground",
-          )}
-        >
-          {Math.ceil(lane.hp)}
-        </span>
-      </div>
-
-      {/* Weapon — label [bar] value  OR  label — Empty */}
-      <div className="flex items-center gap-1.5 text-xs">
-        <span className="text-muted-foreground shrink-0 w-8">Wpn</span>
-        {weaponBar ? (
-          <>
-            <Progress
-              value={weaponBar.pct}
-              className={cn("flex-1 h-1.5", weaponBar.className)}
-            />
-            <span className="tabular-nums shrink-0 w-7 text-right text-muted-foreground">
-              {weaponBar.label}
-            </span>
-          </>
-        ) : (
-          <>
-            <Progress value={0} className="flex-1 h-1.5" />
-            <span className="tabular-nums shrink-0 w-7 text-right text-muted-foreground">
-              —
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Artillery lane info (left info panel) ────────────────────────────────────
-
-function ArtilleryLaneInfo({
-  lane,
-  personnel,
-}: {
-  lane: Lane;
-  personnel: [Personnel, Personnel, Personnel];
-}) {
-  const hpPct = (lane.hp / lane.maxHp) * 100;
-  const weapon = lane.weapons[0];
-  const weaponExists = weapon !== null && weapon?.exists;
-  const ammoShort =
-    weaponExists && weapon?.ammoLoaded
-      ? { cannonballs: "🔮", arrows: "🏹", bolts: "⚡" }[weapon.ammoLoaded]
-      : "—";
-  const assignedCount = weaponExists
-    ? personnel.filter((p) => p.weaponId === weapon?.id).length
-    : 0;
-
-  return (
-    <div className="w-full space-y-1.5">
-      {/* Wall HP bar */}
-      <div className="flex items-center gap-1.5 text-xs">
-        <span className="text-muted-foreground shrink-0">Wall</span>
-        <Progress
-          value={hpPct}
-          className={cn("flex-1 h-1.5", hpColorClass(hpPct))}
-        />
-        <span className="tabular-nums shrink-0 w-7 text-right text-muted-foreground">
-          {Math.ceil(lane.hp)}
-        </span>
-      </div>
-
-      {/* Weapon status */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{ammoShort}</span>
-        <span>{weaponExists ? `×${assignedCount}` : "—"}</span>
-      </div>
-    </div>
-  );
-}
+import { LANE_IDS } from "@/engine/types";
 
 // ── Artillery track (right track panel) ──────────────────────────────────────
 
@@ -205,50 +39,6 @@ function ArtilleryTrack({ lane, enemies }: { lane: Lane; enemies: Enemy[] }) {
         >
           👾
         </span>
-      ))}
-    </div>
-  );
-}
-
-// ── Alchemist lane info (left info panel) ────────────────────────────────────
-
-function AlchemistLaneInfo({
-  lane,
-  enemies,
-  radarAccuracy,
-}: {
-  lane: Lane;
-  enemies: Enemy[];
-  radarAccuracy: number;
-}) {
-  const aliveEnemies = enemies.filter(
-    (e) => e.alive && e.targetLane === lane.id,
-  );
-
-  if (aliveEnemies.length === 0) {
-    return <div className="text-xs text-muted-foreground italic">Clear</div>;
-  }
-
-  const typeCounts: Record<string, number> = {};
-  for (const e of aliveEnemies) {
-    let hash = 5381;
-    for (let i = 0; i < e.id.length; i++) {
-      hash = ((hash << 5) + hash) ^ e.id.charCodeAt(i);
-    }
-    const pseudo = Math.abs(hash % 100);
-    const key = pseudo < radarAccuracy ? e.type : "unknown";
-    typeCounts[key] = (typeCounts[key] ?? 0) + 1;
-  }
-
-  return (
-    <div className="w-full space-y-0.5">
-      <div className="text-sm font-bold text-destructive">
-        {aliveEnemies.length}
-      </div>
-      {Object.entries(typeCounts).map(([type, count]) => (
-        <div key={type} className="text-xs text-muted-foreground">
-          {TYPE_ICONS[type] ?? "?"} ×{count}
-        </div>
       ))}
     </div>
   );
@@ -282,18 +72,18 @@ export function BattlefieldView({
       {/* Direction hint */}
       <div className="shrink-0 flex items-center justify-end gap-1 px-1">
         <span className="text-[10px] text-muted-foreground/60 flex gap-0.5">
-          <span className="animate-[pulse_1.2s_ease-in-out_0.8s_infinite]">
-            ‹
-          </span>
-          <span className="animate-[pulse_1.2s_ease-in-out_0.4s_infinite]">
-            ‹
-          </span>
-          <span className="animate-[pulse_1.2s_ease-in-out_0s_infinite]">
-            ‹
-          </span>
+          {[1.0, 0.8, 0.6, 0.4, 0.2, 0].map((delay) => (
+            <span
+              key={delay}
+              style={{ animationDelay: `${delay}s` }}
+              className="animate-[pulse_1.2s_ease-in-out_infinite]"
+            >
+              ‹
+            </span>
+          ))}
         </span>
         <span className="text-[10px] text-muted-foreground/40 font-medium uppercase tracking-wide">
-          Enemy attack
+          Enemy attack direction
         </span>
       </div>
 

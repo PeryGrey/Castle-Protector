@@ -1,5 +1,7 @@
 "use client";
 import { Progress } from "@/_shadcn/components/ui/progress";
+import { cn } from "@/_shadcn/lib/utils";
+import { GAME_CONFIG } from "@/config/gameConfig";
 
 interface ResourceMeterProps {
   resources: number;
@@ -7,7 +9,7 @@ interface ResourceMeterProps {
 }
 
 export function ResourceMeter({ resources, regenRate }: ResourceMeterProps) {
-  const displayMax = 200;
+  const displayMax = GAME_CONFIG.builder.resourceCap;
   const pct = Math.min(100, (resources / displayMax) * 100);
 
   return (
@@ -23,7 +25,10 @@ export function ResourceMeter({ resources, regenRate }: ResourceMeterProps) {
           </span>
         </span>
       </div>
-      <Progress value={pct} className="h-3" />
+      <Progress
+        value={pct}
+        className={cn("h-3", pct >= 100 && "[&>div]:bg-green-500")}
+      />
     </div>
   );
 }

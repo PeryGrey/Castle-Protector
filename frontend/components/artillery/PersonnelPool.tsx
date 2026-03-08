@@ -9,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/_shadcn/components/ui/select";
+import { LANE_LABELS } from "@/constants/gameLabels";
+import { SectionLabel } from "@/components/shared/SectionLabel";
 import type { Personnel, Weapon } from "@/engine/types";
 
 interface PersonnelPoolProps {
@@ -28,13 +30,6 @@ const MODE_LABELS: Record<Personnel["mode"], string> = {
   maintaining: "Maintaining",
 };
 
-const LANE_SHORT: Record<string, string> = {
-  moat_left: "Moat L",
-  bridge_left: "Bridge L",
-  bridge_right: "Bridge R",
-  moat_right: "Moat R",
-};
-
 export function PersonnelPool({
   personnel,
   weapons,
@@ -45,9 +40,7 @@ export function PersonnelPool({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
-        Personnel
-      </p>
+      <SectionLabel>Personnel</SectionLabel>
       {personnel.map((person) => (
         <Card key={person.id}>
           <CardContent className="py-3 px-3 space-y-2">
@@ -124,7 +117,7 @@ export function PersonnelPool({
                   )}
                   {activeWeapons.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {LANE_SHORT[w.laneId] ?? w.laneId} slot {w.slot + 1} ·{" "}
+                      {LANE_LABELS[w.laneId] ?? w.laneId} slot {w.slot + 1} ·{" "}
                       {w.id.slice(-4)}
                     </SelectItem>
                   ))}

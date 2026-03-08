@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { subscribeToRoom, publishEvent, type GameEvent } from "@/lib/realtime";
@@ -8,14 +8,8 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/_shadcn/components/ui/button";
 import { Badge } from "@/_shadcn/components/ui/badge";
 import { Card, CardContent } from "@/_shadcn/components/ui/card";
-
-type Role = "builder" | "artillery" | "alchemist";
-
-const ROLE_META: Record<Role, { label: string; emoji: string }> = {
-  builder: { label: "Builder", emoji: "🏗️" },
-  artillery: { label: "Artillery", emoji: "🎯" },
-  alchemist: { label: "Alchemist", emoji: "⚗️" },
-};
+import { ROLE_META } from "@/constants/gameLabels";
+import type { Role } from "@/engine/types";
 
 const ALL_ROLES: Role[] = ["builder", "artillery", "alchemist"];
 
@@ -25,7 +19,7 @@ export default function LobbyPage() {
   const router = useRouter();
 
   const myRole = searchParams.get("role") as Role | null;
-  const [joined, setJoined] = useState<Set<Role>>(new Set());
+  const [realtimeJoined, setRealtimeJoined] = useState<Set<Role>>(new Set());
 
   const { data: lobbyData } = useQuery({
     queryKey: ["lobby", roomCode],
@@ -51,18 +45,17 @@ export default function LobbyPage() {
     },
   });
 
-  useEffect(() => {
-    if (lobbyData?.joinedRoles) {
-      setJoined(new Set(lobbyData.joinedRoles));
-    }
-  }, [lobbyData]);
+  const joined = useMemo(
+    () => new Set([...(lobbyData?.joinedRoles ?? []), ...realtimeJoined]),
+    [lobbyData?.joinedRoles, realtimeJoined],
+  );
 
   useEffect(() => {
     const unsub = subscribeToRoom(roomCode, (event: GameEvent) => {
       if (event.type === "player_join") {
         const role = (event.payload as { role?: string } | null)?.role;
         if (role && ALL_ROLES.includes(role as Role)) {
-          setJoined((prev) => new Set([...prev, role as Role]));
+          setRealtimeJoined((prev) => new Set([...prev, role as Role]));
         }
       }
       if (event.type === "wave_start") {

@@ -1,4 +1,5 @@
 export type LaneId = 'moat_left' | 'bridge_left' | 'bridge_right' | 'moat_right'
+export const LANE_IDS: LaneId[] = ['moat_left', 'bridge_left', 'bridge_right', 'moat_right']
 export type EnemyType = 'sea' | 'land' | 'air' // sea→cannonballs, land→arrows, air→bolts
 export type AmmoType = 'cannonballs' | 'arrows' | 'bolts'
 export type Role = 'builder' | 'artillery' | 'alchemist'
@@ -44,7 +45,7 @@ export interface BrewSlot {
 }
 
 export interface BuilderAction {
-  type: 'build' | 'upgrade' | 'reposition' | 'reinforce' | 'emergencyRebuild'
+  type: 'build' | 'reinforce' | 'emergencyRebuild'
   laneId: LaneId
   slot: 0 | undefined
   completesAt: number // ms timestamp

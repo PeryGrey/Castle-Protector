@@ -9,6 +9,7 @@ export const GAME_CONFIG = {
   builder: {
     resourceRegenPerSecond: 5,
     startingResources: 50,
+    resourceCap: 200, // max resources; regen stops here
     costs: {
       build: 30,
       upgrade: 20,
@@ -29,6 +30,7 @@ export const GAME_CONFIG = {
   lanes: {
     startingHp: 100,
     slotsPerLane: 1, // number of weapon slots per lane
+    reinforceHpFraction: 0.2, // restore 20% of max HP per reinforce
   },
 
   // ── WEAPONS ────────────────────────────────────────────────────────────────

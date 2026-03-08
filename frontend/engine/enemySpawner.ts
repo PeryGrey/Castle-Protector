@@ -1,7 +1,6 @@
 import { GAME_CONFIG } from '../config/gameConfig'
 import type { Enemy, EnemyType, LaneId } from './types'
-
-const LANE_IDS: LaneId[] = ['moat_left', 'bridge_left', 'bridge_right', 'moat_right']
+import { LANE_IDS } from './types'
 
 // Moat lanes: sea or air; Bridge lanes: land or air
 const LANE_ENEMY_TYPES: Record<LaneId, EnemyType[]> = {

@@ -16,9 +16,12 @@ import {
   CardTitle,
 } from "@/_shadcn/components/ui/card";
 import { cn } from "@/_shadcn/lib/utils";
+import { ROLE_META } from "@/constants/gameLabels";
+import type { Role } from "@/engine/types";
 
-type Role = "builder" | "artillery" | "alchemist";
 type Mode = "home" | "create" | "join";
+
+const ALL_ROLES: Role[] = ["builder", "artillery", "alchemist"];
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -27,27 +30,6 @@ function generateRoomCode(): string {
     () => chars[Math.floor(Math.random() * chars.length)],
   ).join("");
 }
-
-const ROLES: { id: Role; label: string; emoji: string; desc: string }[] = [
-  {
-    id: "builder",
-    label: "Builder",
-    emoji: "🏗️",
-    desc: "Manage the castle — place weapons, reinforce walls",
-  },
-  {
-    id: "artillery",
-    label: "Artillery",
-    emoji: "🎯",
-    desc: "Operate the weapons — fire, assign personnel, maintain",
-  },
-  {
-    id: "alchemist",
-    label: "Alchemist",
-    emoji: "⚗️",
-    desc: "Read the radar — brew ammo, call out threats",
-  },
-];
 
 export default function Page() {
   const router = useRouter();
@@ -275,26 +257,29 @@ function RolePicker({
     <div className="space-y-1.5">
       <Label>Pick your role</Label>
       <div className="space-y-2">
-        {ROLES.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onSelect(r.id)}
-            className={cn(
-              "w-full text-left px-3 py-2.5 rounded-md border text-sm transition-colors",
-              selected === r.id
-                ? "border-primary bg-primary/10 text-foreground"
-                : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground",
-            )}
-          >
-            <span className="font-semibold text-foreground">
-              {r.emoji} {r.label}
-            </span>
-            <span className="block text-xs text-muted-foreground mt-0.5">
-              {r.desc}
-            </span>
-          </button>
-        ))}
+        {ALL_ROLES.map((id) => {
+          const r = ROLE_META[id];
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onSelect(id)}
+              className={cn(
+                "w-full text-left px-3 py-2.5 rounded-md border text-sm transition-colors",
+                selected === id
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground",
+              )}
+            >
+              <span className="font-semibold text-foreground">
+                {r.emoji} {r.label}
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                {r.description}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -5,6 +5,9 @@ import { Progress } from '@/_shadcn/components/ui/progress'
 import { Badge } from '@/_shadcn/components/ui/badge'
 import { cn } from '@/_shadcn/lib/utils'
 import { GAME_CONFIG } from '@/config/gameConfig'
+import { AMMO_LABELS, AMMO_TYPES, LANE_LABELS } from '@/constants/gameLabels'
+import { getHealthColorClass, isActiveWeapon } from '@/lib/gameUtils'
+import { SectionLabel } from '@/components/shared/SectionLabel'
 import type { Lane, LaneId, AmmoType, Personnel } from '@/engine/types'
 
 interface WeaponDashboardProps {
@@ -14,27 +17,6 @@ interface WeaponDashboardProps {
   onLoadAmmo: (weaponId: string, ammoType: AmmoType) => void
   /** If provided, only show weapons in this lane */
   filterLaneId?: LaneId
-}
-
-const AMMO_LABELS: Record<AmmoType, string> = {
-  cannonballs: 'Cannonballs',
-  arrows: 'Arrows',
-  bolts: 'Bolts',
-}
-
-const AMMO_TYPES: AmmoType[] = ['cannonballs', 'arrows', 'bolts']
-
-const LANE_LABELS: Record<LaneId, string> = {
-  moat_left: 'Left Moat',
-  bridge_left: 'Left Bridge',
-  bridge_right: 'Right Bridge',
-  moat_right: 'Right Moat',
-}
-
-function durColorClass(dur: number): string {
-  if (dur > 60) return '[&>div]:bg-green-500'
-  if (dur > 20) return '[&>div]:bg-amber-500'
-  return '[&>div]:bg-red-500'
 }
 
 export function WeaponDashboard({
@@ -51,7 +33,7 @@ export function WeaponDashboard({
   const weapons = Object.values(lanesToShow)
     .flatMap((lane) =>
       lane.weapons
-        .filter((w): w is NonNullable<typeof w> => w !== null && w.exists)
+        .filter(isActiveWeapon)
         .map((w) => ({ weapon: w, laneLabel: LANE_LABELS[lane.id] }))
     )
 
@@ -69,9 +51,7 @@ export function WeaponDashboard({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1">
-        Weapons
-      </p>
+      <SectionLabel>Weapons</SectionLabel>
       {weapons.map(({ weapon, laneLabel }) => {
         const durPct = (weapon.durability / GAME_CONFIG.weapons.startingDurability) * 100
         const durCritical = durPct < 20
@@ -99,7 +79,7 @@ export function WeaponDashboard({
                 </div>
                 <Progress
                   value={durPct}
-                  className={cn('h-2', durColorClass(weapon.durability))}
+                  className={cn('h-2', getHealthColorClass(weapon.durability, 20))}
                 />
               </div>
 
