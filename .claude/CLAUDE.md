@@ -71,9 +71,19 @@ frontend/                 # Next.js app
       AmmoInventory.tsx
       RadarPanel.tsx
     shared/
-      BattlefieldView.tsx   # Shared 4-lane battlefield component
-      PhaseBadge.tsx        # Wave/phase indicator badge
-      useGameEngine.ts      # Game engine React hook (lives here, not in engine/)
+      BattlefieldView.tsx      # Shared 4-lane battlefield component
+      PhaseBadge.tsx           # Wave/phase indicator badge
+      GameScreenLayout.tsx     # Shared landscape split-screen wrapper
+      GameLoadingState.tsx     # Loading/waiting state for game screens
+      AlchemistLaneInfo.tsx    # Alchemist lane info panel
+      ArtilleryLaneInfo.tsx    # Artillery lane info panel
+      BuilderLaneInfo.tsx      # Builder lane info panel
+      SectionLabel.tsx         # Shared section heading component
+      StatRow.tsx              # Shared stat row component
+      useGameEngine.ts         # Game engine React hook (lives here, not in engine/)
+      useCountdown.ts          # Countdown timer hook
+      useGameOverRedirect.ts   # Redirect hook for game over state
+  constants/                   # Shared constant definitions
   engine/
     gameEngine.ts           # Core game loop — runs client-side, ticks every second
     enemySpawner.ts         # Wave + enemy generation logic
@@ -84,6 +94,7 @@ frontend/                 # Next.js app
   lib/
     supabase.ts             # Supabase client
     realtime.ts             # Realtime subscription helpers
+    gameUtils.ts            # Shared game utility functions
 ```
 
 ## Coding Conventions

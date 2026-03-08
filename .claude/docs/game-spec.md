@@ -78,7 +78,7 @@ This layout is identical across all three roles. Each role sees the same battlef
 
 ### 🏗️ Builder _(reveal: Cloud Engineer)_
 
-Manages the castle's defensive infrastructure. Places, upgrades and repositions weapons along the castle edge. Monitors lane HP and reinforces under attack. Manages a slow-regenerating resource pool across all actions. No headcount concept — all actions are governed purely by the resource pool.
+Manages the castle's defensive infrastructure. Places, upgrades and repositions weapons along the castle edge. Monitors lane HP and reinforces under attack. Manages a slow-regenerating resource pool across all actions. The pool caps at 200 — resources stop accumulating once full. No headcount concept — all actions are governed purely by the resource pool.
 
 ### 🎯 Artillery _(reveal: Software Engineer)_
 
@@ -361,7 +361,7 @@ All tunable game values are defined in a single `gameConfig.ts` file. The game e
 Config covers:
 
 - Artillery personnel count and wrong ammo damage multiplier
-- Builder resource regen rate, starting resources, action costs and timers
+- Builder resource regen rate, starting resources, resource cap (max 200), action costs and timers
 - Lane starting HP and weapon slots per lane
 - Weapon durability, damage, fire rate and maintenance restore rate
 - Alchemist brew slots, brew times per ammo type, and radar accuracy formula values
