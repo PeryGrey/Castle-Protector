@@ -8,34 +8,52 @@ import { ArtilleryStatusTags } from "@/components/shared/ArtilleryStatusTags";
 import { AlchemistLaneInfo } from "@/components/shared/AlchemistLaneInfo";
 import type { Lane, LaneId, Enemy, Personnel, Role } from "@/engine/types";
 import { LANE_IDS } from "@/engine/types";
+import { hashEnemyReveal } from '@/lib/gameUtils'
+import { ENEMY_TYPE_LUCIDE_ICONS } from '@/constants/gameIcons'
 
-// ── Artillery track (right track panel) ──────────────────────────────────────
+// ── Enemy track (right track panel) ──────────────────────────────────────────
 
-function ArtilleryTrack({ lane, enemies }: { lane: Lane; enemies: Enemy[] }) {
+function EnemyTrack({
+  lane,
+  enemies,
+  radarAccuracy,
+}: {
+  lane: Lane
+  enemies: Enemy[]
+  radarAccuracy?: number
+}) {
   const laneEnemies = enemies.filter(
-    (e) =>
-      e.alive &&
-      e.targetLane === lane.id &&
-      e.position >= 0 &&
-      e.position <= 100,
-  );
+    (e) => e.alive && e.targetLane === lane.id && e.position >= 0 && e.position <= 100,
+  )
 
   return (
     <div className="w-full h-full relative">
-      {/* Horizontal center line */}
       <div className="absolute left-0 right-0 top-1/2 h-px bg-border/50" />
-      {/* Enemy markers — position 0 = right edge (spawned), 100 = left edge (castle) */}
-      {laneEnemies.map((e) => (
-        <span
-          key={e.id}
-          className="absolute top-1/2 -translate-y-1/2 text-sm leading-none"
-          style={{ right: `${e.position}%` }}
-        >
-          👾
-        </span>
-      ))}
+      {laneEnemies.map((e) => {
+        const revealed = radarAccuracy !== undefined
+          ? hashEnemyReveal(e.id, radarAccuracy)
+          : true
+        const Icon = revealed
+          ? ENEMY_TYPE_LUCIDE_ICONS[e.type as keyof typeof ENEMY_TYPE_LUCIDE_ICONS]
+          : null
+        return (
+          <span
+            key={e.id}
+            className="absolute top-1/2 -translate-y-1/2 text-sm leading-none"
+            style={{ right: `${e.position}%` }}
+          >
+            {radarAccuracy === undefined ? (
+              '👾'
+            ) : Icon ? (
+              <Icon className="size-3.5 text-destructive" />
+            ) : (
+              <span className="text-xs text-muted-foreground font-bold">?</span>
+            )}
+          </span>
+        )
+      })}
     </div>
-  );
+  )
 }
 
 // ── Main BattlefieldView ─────────────────────────────────────────────────────
@@ -140,9 +158,12 @@ export function BattlefieldView({
                     </Badge>
                   )}
                   {role === "artillery" && personnel && (
-                    <ArtilleryTrack lane={lane} enemies={enemies} />
+                    <EnemyTrack lane={lane} enemies={enemies} />
                   )}
-                  {(role === "builder" || role === "alchemist") && (
+                  {role === "alchemist" && (
+                    <EnemyTrack lane={lane} enemies={enemies} radarAccuracy={radarAccuracy} />
+                  )}
+                  {role === "builder" && (
                     <div className="absolute top-1/2 left-0 right-0 h-px bg-border/30" />
                   )}
                 </div>
