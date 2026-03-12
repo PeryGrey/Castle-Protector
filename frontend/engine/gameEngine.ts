@@ -459,6 +459,13 @@ export function createGameEngine(params: GameEngineParams): GameEngine {
             weapon.exists = false
             state.weaponsDestroyed++
             state.score = calculateScore(state)
+            for (const person of state.personnel) {
+              if (person.weaponId === weapon.id) {
+                person.weaponId = null
+                person.mode = 'idle'
+                publish('weapon_assign', { personnelId: person.id, weaponId: null, mode: 'idle' })
+              }
+            }
           }
           publish('weapon_durability', {
             weaponId: weapon.id, laneId: weapon.laneId, slot: weapon.slot,
