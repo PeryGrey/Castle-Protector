@@ -32,7 +32,6 @@ export default function BuilderPage() {
           radarAccuracy={0}
           selectedLaneId={selectedLane}
           onSelectLane={setSelectedLane}
-          builderActions={state.builderActions}
         />
       }
       header={
